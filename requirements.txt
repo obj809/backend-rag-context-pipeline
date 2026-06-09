@@ -1,0 +1,10 @@
+fastapi
+uvicorn[standard]
+langchain-core
+langchain-openai
+sentence-transformers
+numpy
+python-dotenv
+psycopg[binary]
+psycopg-pool
+pgvector
