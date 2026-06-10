@@ -8,13 +8,13 @@ chain, and invokes it. Answers carry inline `[page N]` citations.
 Run:  uvicorn api.main:app --reload   (from this repo root; build the index first)
 Env:  OPENAI_API_KEY, DATABASE_URL    (see .env.example)
 
-Transitional layout (multi-repo split in progress):
-  - The query engine (chain/load_index/retriever) currently lives in the umbrella
-    project's `querying/` dir; it will move to `engine-rag-context-pipeline`. Until
-    then this service reaches it by putting that dir on sys.path (UMBRELLA/querying).
-  - The vector store + index are owned by `vector-db-` / `indexing-rag-context-pipeline`
-    (today: the umbrella project's docker-compose + `python indexing/build_index.py`).
-  When those repos land, repoint ENGINE_DIR / env loading below and drop the bridge.
+Transitional layout (multi-repo split):
+  - The query engine (chain/load_index/retriever) lives in the sibling
+    `engine-rag-context-pipeline` repo; this service reaches its leaf modules by
+    putting that repo's root on sys.path (UMBRELLA/engine-rag-context-pipeline).
+    Replace with a real package dependency once the engine is published.
+  - The vector store + index are owned by `vector-db-rag-context-pipeline`
+    (docker compose) and `indexing-rag-context-pipeline` (`python build_index.py`).
 """
 
 import os
@@ -31,12 +31,12 @@ from pydantic import BaseModel, Field
 from sentence_transformers import SentenceTransformer
 
 BACKEND_ROOT = Path(__file__).resolve().parent.parent   # backend-rag-context-pipeline/
-UMBRELLA = BACKEND_ROOT.parent                           # rag-context-pipeline/ (transitional)
+UMBRELLA = BACKEND_ROOT.parent                           # rag-context-pipeline/
 
-# Transitional: the query engine still lives in the umbrella project's querying/ dir.
-# Put it on sys.path so `chain`/`load_index`/`retriever` import as before. Replace
-# with a dependency on engine-rag-context-pipeline once that repo exists.
-ENGINE_DIR = UMBRELLA / "querying"
+# The query engine lives in the sibling engine repo (leaves flattened at its root).
+# Put it on sys.path so `chain`/`load_index`/`retriever` import directly. Replace
+# with a real package dependency once the engine is published.
+ENGINE_DIR = UMBRELLA / "engine-rag-context-pipeline"
 sys.path.insert(0, str(ENGINE_DIR))
 from chain import build_chain           # noqa: E402
 from load_index import load_index        # noqa: E402

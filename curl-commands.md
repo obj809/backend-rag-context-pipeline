@@ -10,9 +10,9 @@ uvicorn api.main:app --reload
 The service listens on `http://localhost:8000` by default. Interactive,
 auto-generated docs live at `http://localhost:8000/docs`.
 
-> Requires the index to be built (`python indexing/build_index.py` from the
-> umbrella project), Postgres running (`docker compose up -d`), and
-> `OPENAI_API_KEY` + `DATABASE_URL` in `.env`.
+> Requires the index to be built (`cd indexing-rag-context-pipeline && python
+> build_index.py`), Postgres running (`cd vector-db-rag-context-pipeline &&
+> docker compose up -d`), and `OPENAI_API_KEY` + `DATABASE_URL` in `.env`.
 
 See the [Endpoints section in the README](README.md#endpoints) for the endpoint reference (request schema, error codes).
 

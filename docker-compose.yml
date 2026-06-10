@@ -1,0 +1,20 @@
+# Runs the HTTP API against the already-running vector-db compose project.
+# Prerequisites: cd ../vector-db-rag-context-pipeline && docker compose up -d
+#                (and the index built: cd ../indexing-rag-context-pipeline && python build_index.py)
+services:
+  api:
+    build:
+      context: ..                                    # umbrella root, so the engine repo is in scope
+      dockerfile: backend-rag-context-pipeline/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql://rag:rag@db:5432/rag # `db` = service name on the shared network
+      OPENAI_API_KEY: ${OPENAI_API_KEY}              # interpolated from this repo's .env
+    networks:
+      - vector-db
+
+networks:
+  vector-db:
+    external: true
+    name: vector-db-rag-context-pipeline_default
