@@ -1,4 +1,4 @@
-# backend-rag-context-pipeline
+# Backend RAG Context Pipeline
 
 The HTTP API for the [RAG Context Pipeline](../). A FastAPI service that answers
 questions about the indexed document over JSON, reusing the same retrieval +
