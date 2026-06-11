@@ -1,10 +1,11 @@
 # Backend RAG Context Pipeline
 
 The HTTP API for the [RAG Context Pipeline](../). A FastAPI service that answers
-questions about the indexed document over JSON, reusing the same retrieval +
-answer chain as the project's REPL. Answers carry inline `[page N]` citations.
+questions about the indexed document — as blocking JSON (`/ask`) or as a streamed
+chat endpoint (`/chat`) — reusing the same retrieval + answer chain as the
+project's REPL. Answers carry inline `[page N]` citations.
 
-This is one of several repos the pipeline is being split into
+This is one of the per-concern repos the pipeline is split into
 (`backend-`, `engine-`, `indexing-`, `vector-db-rag-context-pipeline`). This repo
 owns the **HTTP layer only**.
 

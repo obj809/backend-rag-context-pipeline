@@ -120,7 +120,7 @@ def ask(req: AskRequest) -> AskResponse:
 def chat(req: ChatRequest) -> StreamingResponse:
     """Answer the last user message, streamed as raw text/plain fragments.
 
-    Contract (see the umbrella's frontend-integration-plan.md): full conversation
+    Contract (see the umbrella's integration-plan.md): full conversation
     in, plain UTF-8 token stream out (no SSE/JSON framing), non-200 for any failure
     before the first token. v1 ignores prior turns — the chain is single-question.
     """
