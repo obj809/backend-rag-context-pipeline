@@ -1,9 +1,11 @@
 """FastAPI service exposing the RAG pipeline over HTTP.
 
-Wraps the query-side components (`PgVectorRetriever` + the LCEL chain) behind a
-JSON API. The embedding model and a Postgres connection pool are created once at
-startup; each request borrows a pooled connection, builds the (cheap) retriever +
-chain, and invokes it. Answers carry inline `[page N]` citations.
+Wraps the query-side components (`PgVectorRetriever` + the LCEL chain) behind
+HTTP: `/ask` (blocking JSON) and `/chat` (chat-message contract, streamed
+text/plain — consumed by the llm-user-interface frontend's proxy route). The
+embedding model and a Postgres connection pool are created once at startup; each
+request borrows a pooled connection and builds the (cheap) retriever + chain.
+Answers carry inline `[page N]` citations.
 
 Run:  uvicorn api.main:app --reload   (from this repo root; build the index first)
 Env:  OPENAI_API_KEY, DATABASE_URL    (see .env.example)
@@ -21,9 +23,11 @@ import os
 import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import Literal
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import StreamingResponse
 from langchain_openai import ChatOpenAI
 from pgvector.psycopg import register_vector
 from psycopg_pool import ConnectionPool
@@ -38,7 +42,7 @@ UMBRELLA = BACKEND_ROOT.parent                           # rag-context-pipeline/
 # with a real package dependency once the engine is published.
 ENGINE_DIR = UMBRELLA / "engine-rag-context-pipeline"
 sys.path.insert(0, str(ENGINE_DIR))
-from chain import build_chain           # noqa: E402
+from chain import build_answer_chain, build_chain, format_docs  # noqa: E402
 from load_index import load_index        # noqa: E402
 from retriever import PgVectorRetriever  # noqa: E402
 
@@ -54,6 +58,15 @@ class AskRequest(BaseModel):
 class AskResponse(BaseModel):
     question: str
     answer: str
+
+
+class Message(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str
+
+
+class ChatRequest(BaseModel):
+    messages: list[Message] = Field(..., description="Full conversation; last message must be from the user.")
 
 
 @asynccontextmanager
@@ -101,3 +114,37 @@ def ask(req: AskRequest) -> AskResponse:
     except Exception as exc:  # surface DB / LLM / upstream failures as 502
         raise HTTPException(status_code=502, detail=str(exc)) from exc
     return AskResponse(question=req.question, answer=answer)
+
+
+@app.post("/chat")
+def chat(req: ChatRequest) -> StreamingResponse:
+    """Answer the last user message, streamed as raw text/plain fragments.
+
+    Contract (see the umbrella's frontend-integration-plan.md): full conversation
+    in, plain UTF-8 token stream out (no SSE/JSON framing), non-200 for any failure
+    before the first token. v1 ignores prior turns — the chain is single-question.
+    """
+    if not req.messages or req.messages[-1].role != "user":
+        raise HTTPException(status_code=400, detail="messages must be non-empty and end with a user message")
+    query = req.messages[-1].content
+
+    try:
+        # Retrieve eagerly so the pooled connection is held only for the SQL
+        # lookup, not for the multi-second LLM stream.
+        with app.state.pool.connection() as conn:
+            retriever = PgVectorRetriever(conn=conn, embedder=app.state.model, k=DEFAULT_TOP_K)
+            docs = retriever.invoke(query)
+        stream = build_answer_chain(app.state.llm).stream(
+            {"context": format_docs(docs), "question": query}
+        )
+        # Pull the first token before returning: once StreamingResponse starts,
+        # the 200 status is already sent, so OpenAI failures must surface here.
+        first = next(stream, "")
+    except Exception as exc:  # surface DB / LLM / upstream failures as 502
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+    def generate():
+        yield first
+        yield from stream
+
+    return StreamingResponse(generate(), media_type="text/plain; charset=utf-8")

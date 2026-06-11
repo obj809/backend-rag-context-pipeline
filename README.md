@@ -75,10 +75,14 @@ Notes on how the image works:
 |---|---|
 | `GET /health` | Liveness check plus a real DB round-trip; returns `{ "status": "ok" }`. |
 | `POST /ask` | Body `{ "question": string, "k"?: int }` (`k` defaults to 6, range 1–20). Returns the `question` and an `answer` with inline `[page N]` citations. |
+| `POST /chat` | Body `{ "messages": [{ "role": "user" \| "assistant", "content": string }, ...] }` — full conversation, last message must be from the user. **Streams** the answer as raw `text/plain; charset=utf-8` fragments (no SSE/JSON framing); stream close = end of reply. v1 answers only the last user message (prior turns are accepted but ignored); `k` is fixed at 6. Built for the chat frontend's proxy route. |
 
-Validation errors (empty `question`, `k` out of range) return **422** (no LLM
-call); upstream DB/OpenAI failures return **502** with the error in `detail`.
-Runnable `curl` examples live in [`curl-commands.md`](curl-commands.md).
+Validation errors return **422** (malformed body/roles) or **400** (`messages`
+empty or not ending with a user message) — no LLM call; upstream DB/OpenAI
+failures return **502** with the error in `detail`. `/chat` only fails with a
+status code *before* the first streamed byte; a mid-stream failure surfaces as
+an aborted body. Runnable `curl` examples live in
+[`curl-commands.md`](curl-commands.md).
 
 ## Required environment variables
 
