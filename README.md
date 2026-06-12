@@ -1,5 +1,7 @@
 # Backend RAG Context Pipeline
 
+[![tests](https://github.com/obj809/backend-rag-context-pipeline/actions/workflows/tests.yml/badge.svg)](https://github.com/obj809/backend-rag-context-pipeline/actions/workflows/tests.yml)
+
 The HTTP API for the [RAG Context Pipeline](../). A FastAPI service that answers
 questions about the indexed document — as blocking JSON (`/ask`) or as a streamed
 chat endpoint (`/chat`) — reusing the same retrieval + answer chain as the
@@ -84,6 +86,23 @@ failures return **502** with the error in `detail`. `/chat` only fails with a
 status code *before* the first streamed byte; a mid-stream failure surfaces as
 an aborted body. Runnable `curl` examples live in
 [`curl-commands.md`](curl-commands.md).
+
+## Tests
+
+Contract tests for the three endpoints — the behaviors the chat frontend's
+proxy relies on (status codes, streaming content type, last-user-message
+semantics). They run **offline**: the app is wired with fakes
+(`tests/conftest.py`) instead of the real pool/embedder/LLM, so no database,
+OpenAI key, or model download is needed.
+
+```bash
+pip install -r requirements-dev.txt   # pytest + httpx, on top of requirements.txt
+python -m pytest
+```
+
+The engine repo must still be checked out as a sibling (the tests import
+`api.main`, which bridges to it over `sys.path`) — but only its source modules
+are used; the two repos' test suites are otherwise independent.
 
 ## Required environment variables
 
