@@ -20,13 +20,14 @@ Transitional layout (multi-repo split):
 """
 
 import os
+import secrets
 import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Literal
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, Header, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from langchain_openai import ChatOpenAI
 from pgvector.psycopg import register_vector
@@ -87,13 +88,39 @@ async def lifespan(app: FastAPI):
     app.state.pool = pool
     app.state.model = SentenceTransformer(embedding_model)
     app.state.llm = ChatOpenAI(model=OPENAI_MODEL)   # reads OPENAI_API_KEY
+    app.state.api_key = os.environ.get("RAG_API_KEY")  # None → auth disabled (local dev)
     try:
         yield
     finally:
         pool.close()
 
 
-app = FastAPI(title="RAG Context Pipeline — Backend", version="0.1.0", lifespan=lifespan)
+# Auto docs are public once the service is proxied; ship them only when running
+# keyless (local dev). Read at import time — in production the key arrives as
+# real env (compose-injected), not just a .env file, so this stays consistent
+# with the lifespan check.
+_KEYLESS = os.environ.get("RAG_API_KEY") is None
+app = FastAPI(
+    title="RAG Context Pipeline — Backend",
+    version="0.1.0",
+    lifespan=lifespan,
+    docs_url="/docs" if _KEYLESS else None,
+    redoc_url="/redoc" if _KEYLESS else None,
+    openapi_url="/openapi.json" if _KEYLESS else None,
+)
+
+
+def require_api_key(
+    request: Request, x_api_key: str | None = Header(default=None)
+) -> None:
+    """Shared-secret gate for the credit-spending endpoints.
+
+    Active only when RAG_API_KEY is set (production); keyless local dev is
+    unchanged. Rejects with 401 before any embedding/retrieval/LLM work.
+    """
+    expected = getattr(request.app.state, "api_key", None)
+    if expected is not None and not secrets.compare_digest(x_api_key or "", expected):
+        raise HTTPException(status_code=401, detail="invalid or missing X-API-Key")
 
 
 @app.get("/health")
@@ -104,7 +131,7 @@ def health() -> dict:
     return {"status": "ok"}
 
 
-@app.post("/ask", response_model=AskResponse)
+@app.post("/ask", response_model=AskResponse, dependencies=[Depends(require_api_key)])
 def ask(req: AskRequest) -> AskResponse:
     """Answer a question against the indexed document."""
     try:
@@ -117,7 +144,7 @@ def ask(req: AskRequest) -> AskResponse:
     return AskResponse(question=req.question, answer=answer)
 
 
-@app.post("/chat")
+@app.post("/chat", dependencies=[Depends(require_api_key)])
 def chat(req: ChatRequest) -> StreamingResponse:
     """Answer the last user message, streamed as raw text/plain fragments.
 

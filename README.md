@@ -109,3 +109,8 @@ are used; the two repos' test suites are otherwise independent.
 - `OPENAI_API_KEY` — answer generation (the embedding model runs locally, no key).
 - `DATABASE_URL` — e.g. `postgresql://rag:rag@localhost:5432/rag`, matching
   `vector-db-rag-context-pipeline/docker-compose.yml`.
+- `RAG_API_KEY` — **optional** shared secret. When set (production), `/ask` and
+  `/chat` require the `X-API-Key: <value>` header (401 otherwise, before any
+  retrieval/LLM work) and the auto docs (`/docs`, `/openapi.json`) are disabled.
+  When unset (local dev), no check — everything behaves as before. `GET /health`
+  is always open.

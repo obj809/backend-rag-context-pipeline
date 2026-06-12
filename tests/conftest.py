@@ -85,10 +85,15 @@ class FailingChatModel(BaseChatModel):
         raise RuntimeError("llm down")
 
 
-def _wire(pool_conn, llm, embedder):
+# What the keyed client's gate expects; tests send (or omit) this value.
+SHARED_KEY = "test-shared-secret"
+
+
+def _wire(pool_conn, llm, embedder, api_key=None):
     app.state.pool = FakePool(pool_conn)
     app.state.model = embedder
     app.state.llm = llm
+    app.state.api_key = api_key  # always reset — `app` is shared across tests
     return TestClient(app)
 
 
@@ -113,3 +118,10 @@ def client_db_down(embedder):
 @pytest.fixture
 def client_llm_down(embedder):
     return _wire(FakeConn(FAKE_ROWS), FailingChatModel(), embedder)
+
+
+@pytest.fixture
+def client_keyed(embedder):
+    """Happy-path app with the shared-secret gate armed (RAG_API_KEY set)."""
+    llm = GenericFakeChatModel(messages=cycle([AIMessage(content=FAKE_ANSWER)]))
+    return _wire(FakeConn(FAKE_ROWS), llm, embedder, api_key=SHARED_KEY)
