@@ -72,9 +72,10 @@ class ChatRequest(BaseModel):
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Load the (expensive) model and open the pool once, before serving requests."""
-    # Repo-local .env wins; fall back to the umbrella .env during the multi-repo split.
+    # Precedence: real environment > repo-local .env > umbrella .env — injected
+    # env (e.g. the container's DATABASE_URL) is never overridden by a .env file.
+    load_dotenv(BACKEND_ROOT / ".env")
     load_dotenv(UMBRELLA / ".env")
-    load_dotenv(BACKEND_ROOT / ".env", override=True)
 
     # register_vector runs on every pooled connection so numpy arrays adapt to the
     # pgvector `vector` type.
