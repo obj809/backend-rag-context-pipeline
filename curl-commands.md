@@ -35,31 +35,31 @@ Basic request:
 ```bash
 curl -s localhost:8000/ask \
   -H 'content-type: application/json' \
-  -d '{"question": "What is Australia'\''s 2035 emissions target?"}'
+  -d '{"question": "What is the Minister'\''s role in approving a controlled action?"}'
 ```
 
 ```json
 {
-  "question": "What is Australia's 2035 emissions target?",
-  "answer": "Australia's 2035 target is to cut emissions 62–70% below 2005 levels [page 4] ..."
+  "question": "What is the Minister's role in approving a controlled action?",
+  "answer": "The Minister decides whether to approve a controlled action and may attach conditions [Volume 1, p.79] ..."
 }
 ```
 
-(The apostrophe in "Australia's" is escaped as `'\''` to survive the single-quoted
-shell string. Answers carry inline `[page N]` citations.)
+(The apostrophe in "Minister's" is escaped as `'\''` to survive the single-quoted
+shell string. Answers carry inline `[Volume N, p.M]` citations.)
 
 With a custom `k`, pretty-printed via `jq`:
 
 ```bash
 curl -s localhost:8000/ask \
   -H 'content-type: application/json' \
-  -d '{"question": "How big is the Net Zero Fund?", "k": 4}' | jq
+  -d '{"question": "What is a bilateral agreement under the Act?", "k": 4}' | jq
 ```
 
 From a JSON file instead of an inline body:
 
 ```bash
-echo '{"question": "What share of methane comes from agriculture?"}' > q.json
+echo '{"question": "What is a matter of national environmental significance?"}' > q.json
 curl -s localhost:8000/ask -H 'content-type: application/json' -d @q.json | jq
 ```
 
@@ -73,7 +73,7 @@ arrive:
 ```bash
 curl -N -X POST localhost:8000/chat \
   -H 'content-type: application/json' \
-  -d '{"messages": [{"role": "user", "content": "What is the net-zero target year?"}]}'
+  -d '{"messages": [{"role": "user", "content": "What are matters of national environmental significance?"}]}'
 ```
 
 Prior turns are accepted (and currently ignored — the chain is single-question):
@@ -82,14 +82,14 @@ Prior turns are accepted (and currently ignored — the chain is single-question
 curl -N -X POST localhost:8000/chat \
   -H 'content-type: application/json' \
   -d '{"messages": [
-        {"role": "user", "content": "What is the Net Zero Fund?"},
-        {"role": "assistant", "content": "A fund that..."},
-        {"role": "user", "content": "How big is it?"}
+        {"role": "user", "content": "What is a controlled action?"},
+        {"role": "assistant", "content": "An action that..."},
+        {"role": "user", "content": "Who approves it?"}
       ]}'
 ```
 
 The stream is plain UTF-8 text — no SSE `data:` prefixes, no JSON framing; the
-connection closing is the end-of-reply signal. Answers carry inline `[page N]`
+connection closing is the end-of-reply signal. Answers carry inline `[Volume N, p.M]`
 citations.
 
 ## Error responses

@@ -39,5 +39,5 @@ docker compose build --build-arg EMBEDDING_MODEL=... # rebake a different embedd
 curl localhost:8000/health
 curl -s localhost:8000/ask \
   -H 'content-type: application/json' \
-  -d '{"question": "What is the net zero target year?"}'
+  -d '{"question": "What are matters of national environmental significance?"}'
 ```

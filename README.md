@@ -3,9 +3,9 @@
 [![tests](https://github.com/obj809/backend-rag-context-pipeline/actions/workflows/tests.yml/badge.svg)](https://github.com/obj809/backend-rag-context-pipeline/actions/workflows/tests.yml)
 
 The HTTP API for the [RAG Context Pipeline](../). A FastAPI service that answers
-questions about the indexed document — as blocking JSON (`/ask`) or as a streamed
-chat endpoint (`/chat`) — reusing the same retrieval + answer chain as the
-project's REPL. Answers carry inline `[page N]` citations.
+questions about the indexed corpus (the three-volume EPBC Act 1999) — as blocking
+JSON (`/ask`) or as a streamed chat endpoint (`/chat`) — reusing the same retrieval
++ answer chain as the project's REPL. Answers carry inline `[Volume N, p.M]` citations.
 
 This is one of the per-concern repos the pipeline is split into
 (`backend-`, `engine-`, `indexing-`, `vector-db-rag-context-pipeline`). This repo
@@ -77,7 +77,7 @@ Notes on how the image works:
 | Endpoint | Description |
 |---|---|
 | `GET /health` | Liveness check plus a real DB round-trip; returns `{ "status": "ok" }`. |
-| `POST /ask` | Body `{ "question": string, "k"?: int }` (`k` defaults to 6, range 1–20). Returns the `question` and an `answer` with inline `[page N]` citations. |
+| `POST /ask` | Body `{ "question": string, "k"?: int }` (`k` defaults to 6, range 1–20). Returns the `question` and an `answer` with inline `[Volume N, p.M]` citations. |
 | `POST /chat` | Body `{ "messages": [{ "role": "user" \| "assistant", "content": string }, ...] }` — full conversation, last message must be from the user. **Streams** the answer as raw `text/plain; charset=utf-8` fragments (no SSE/JSON framing); stream close = end of reply. v1 answers only the last user message (prior turns are accepted but ignored); `k` is fixed at 6. Built for the chat frontend's proxy route. |
 
 Validation errors return **422** (malformed body/roles) or **400** (`messages`
