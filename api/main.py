@@ -5,7 +5,7 @@ HTTP: `/ask` (blocking JSON) and `/chat` (chat-message contract, streamed
 text/plain — consumed by the llm-user-interface frontend's proxy route). The
 embedding model and a Postgres connection pool are created once at startup; each
 request borrows a pooled connection and builds the (cheap) retriever + chain.
-Answers carry inline `[page N]` citations.
+Answers carry inline `[Volume N, p.M]` citations.
 
 Run:  uvicorn api.main:app --reload   (from this repo root; build the index first)
 Env:  OPENAI_API_KEY, DATABASE_URL    (see .env.example)
