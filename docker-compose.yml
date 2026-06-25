@@ -9,11 +9,16 @@ services:
       - "8000:8000"
     environment:
       DATABASE_URL: postgresql://rag:rag@db:5432/rag # `db` = service name on the shared network
-      OPENAI_API_KEY: ${OPENAI_API_KEY}              # interpolated from this repo's .env
+      OPENAI_API_KEY: ${OPENAI_API_KEY}              # LiteLLM virtual key, interpolated from this repo's .env
+      OPENAI_BASE_URL: http://litellm:4000/v1        # `litellm` = service name on its shared network
     networks:
       - vector-db
+      - litellm
 
 networks:
   vector-db:
     external: true
     name: vector-db-rag-context-pipeline_default
+  litellm:
+    external: true
+    name: litellm-docker-container_default

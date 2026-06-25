@@ -9,6 +9,8 @@ Answers carry inline `[Volume N, p.M]` citations.
 
 Run:  uvicorn api.main:app --reload   (from this repo root; build the index first)
 Env:  OPENAI_API_KEY, DATABASE_URL    (see .env.example)
+      OPENAI_BASE_URL (optional) routes the LLM call through a LiteLLM/OpenAI-
+      compatible proxy; when set, OPENAI_API_KEY is that proxy's key (unset = direct OpenAI).
 
 Layout (multi-repo split):
   - The query engine (chain/load_index/retriever) is the installed `rag-engine`
@@ -79,7 +81,8 @@ async def lifespan(app: FastAPI):
 
     app.state.pool = pool
     app.state.model = SentenceTransformer(embedding_model)
-    app.state.llm = ChatOpenAI(model=OPENAI_MODEL)   # reads OPENAI_API_KEY
+    # base_url unset → direct OpenAI; set → route via a LiteLLM/OpenAI-compatible proxy.
+    app.state.llm = ChatOpenAI(model=OPENAI_MODEL, base_url=os.getenv("OPENAI_BASE_URL") or None)
     app.state.api_key = os.environ.get("RAG_API_KEY")  # None → auth disabled (local dev)
     try:
         yield

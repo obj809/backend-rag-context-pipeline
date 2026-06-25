@@ -60,10 +60,12 @@ Notes on how the image works:
 - The build context is **this repo's own root** (`context: .`). The engine is
   installed from its Git repo as the `rag-engine` package (the image adds `git`
   for the `git+https` install), so no sibling source is copied in.
-- The container joins the vector-db repo's Compose network
-  (`vector-db-rag-context-pipeline_default`, declared `external`) and reaches
-  Postgres as `db:5432` — `DATABASE_URL` is set in `docker-compose.yml`;
-  `OPENAI_API_KEY` is interpolated from this repo's `.env`.
+- The container joins two **external** Compose networks: the vector-db repo's
+  (`vector-db-rag-context-pipeline_default`) to reach Postgres as `db:5432`, and
+  the LiteLLM proxy's (`litellm-docker-container_default`) to reach the LLM
+  gateway as `litellm:4000`. Both projects must be up first. `DATABASE_URL` and
+  `OPENAI_BASE_URL` (`http://litellm:4000/v1`) are set in `docker-compose.yml`;
+  `OPENAI_API_KEY` (the LiteLLM virtual key) is interpolated from this repo's `.env`.
 - The embedding model (`BAAI/bge-small-en-v1.5`) is baked into the image at build
   time, so startup needs no HuggingFace download. If you change `EMBEDDING_MODEL`
   in the indexer, rebuild with `--build-arg EMBEDDING_MODEL=...`.
@@ -108,6 +110,11 @@ are otherwise independent.
 ## Required environment variables
 
 - `OPENAI_API_KEY` — answer generation (the embedding model runs locally, no key).
+  With `OPENAI_BASE_URL` set this is the **LiteLLM virtual key**, not the raw
+  OpenAI key.
+- `OPENAI_BASE_URL` — **optional**. Unset → the LLM call goes direct to OpenAI
+  (default). Set → it's routed through an OpenAI-compatible proxy: `http://localhost:4000/v1`
+  for host runs, `http://litellm:4000/v1` in Docker (already set in `docker-compose.yml`).
 - `DATABASE_URL` — e.g. `postgresql://rag:rag@localhost:5432/rag`, matching
   `vector-db-rag-context-pipeline/docker-compose.yml`.
 - `RAG_API_KEY` — **optional** shared secret. When set (production), `/ask` and
@@ -115,3 +122,25 @@ are otherwise independent.
   retrieval/LLM work) and the auto docs (`/docs`, `/openapi.json`) are disabled.
   When unset (local dev), no check — everything behaves as before. `GET /health`
   is always open.
+
+### Routing through the LiteLLM proxy
+
+`OPENAI_BASE_URL` lets you gate the OpenAI call behind a local/VPS
+[LiteLLM](https://docs.litellm.ai/) proxy (`litellm-docker-container/`), so the raw
+OpenAI key lives only in the proxy and the backend authenticates with a scoped,
+budget-capped **virtual key**. Paired with `RAG_API_KEY` (inbound auth) and the
+proxy's per-key budget (outbound spend cap), the public endpoint can't burn
+uncapped OpenAI credit.
+
+1. Start the proxy: `cd ../litellm-docker-container && docker compose up -d`
+   (its `.env` holds the real `OPENAI_API_KEY` + `LITELLM_MASTER_KEY`).
+2. Mint a virtual key scoped to the answer model, once:
+   ```bash
+   curl -s http://localhost:4000/key/generate \
+     -H "Authorization: Bearer $LITELLM_MASTER_KEY" -H "Content-Type: application/json" \
+     -d '{"models": ["gpt-5.4-nano"], "max_budget": 5, "key_alias": "rag-backend"}'
+   ```
+   (or use the admin UI at `http://localhost:4000/ui`). Put the returned `sk-…`
+   in this repo's `.env` as `OPENAI_API_KEY`.
+3. Host runs: also set `OPENAI_BASE_URL=http://localhost:4000/v1` in `.env`. The
+   Docker container already gets `http://litellm:4000/v1` from `docker-compose.yml`.
