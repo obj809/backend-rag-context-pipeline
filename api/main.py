@@ -42,7 +42,7 @@ BACKEND_ROOT = Path(__file__).resolve().parent.parent   # backend-rag-context-pi
 UMBRELLA = BACKEND_ROOT.parent                           # rag-context-pipeline/
 
 DEFAULT_TOP_K = 6
-OPENAI_MODEL = "gpt-5.4-nano"
+OPENAI_MODEL = "gpt-5.4-mini"
 
 
 class AskRequest(BaseModel):

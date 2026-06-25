@@ -138,7 +138,7 @@ uncapped OpenAI credit.
    ```bash
    curl -s http://localhost:4000/key/generate \
      -H "Authorization: Bearer $LITELLM_MASTER_KEY" -H "Content-Type: application/json" \
-     -d '{"models": ["gpt-5.4-nano"], "max_budget": 5, "key_alias": "rag-backend"}'
+     -d '{"models": ["gpt-5.4-mini"], "max_budget": 5, "key_alias": "rag-backend"}'
    ```
    (or use the admin UI at `http://localhost:4000/ui`). Put the returned `sk-…`
    in this repo's `.env` as `OPENAI_API_KEY`.
