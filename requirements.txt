@@ -8,3 +8,10 @@ python-dotenv
 psycopg[binary]
 psycopg-pool
 pgvector
+
+# Query engine, installed as a package (no more sys.path bridge). Editable-local
+# for dev — both repos must still be checked out side by side; Phase 2 swaps this
+# for a pinned `rag-engine @ git+https://…@<tag>` (see umbrella TODO.md item 1).
+# Pulls langchain-core/-openai, sentence-transformers, numpy, psycopg, pgvector
+# transitively; they stay listed above as the backend's own direct imports.
+-e ../engine-rag-context-pipeline

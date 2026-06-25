@@ -10,42 +10,34 @@ Answers carry inline `[Volume N, p.M]` citations.
 Run:  uvicorn api.main:app --reload   (from this repo root; build the index first)
 Env:  OPENAI_API_KEY, DATABASE_URL    (see .env.example)
 
-Transitional layout (multi-repo split):
-  - The query engine (chain/load_index/retriever) lives in the sibling
-    `engine-rag-context-pipeline` repo; this service reaches its leaf modules by
-    putting that repo's root on sys.path (UMBRELLA/engine-rag-context-pipeline).
-    Replace with a real package dependency once the engine is published.
+Layout (multi-repo split):
+  - The query engine (chain/load_index/retriever) is the installed `rag-engine`
+    package (built from the sibling `engine-rag-context-pipeline` repo); its leaf
+    modules import as ordinary top-level modules. See the backend requirements.txt.
   - The vector store + index are owned by `vector-db-rag-context-pipeline`
     (docker compose) and `indexing-rag-context-pipeline` (`python build_index.py`).
 """
 
 import os
 import secrets
-import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Literal
 
+from chain import build_answer_chain, build_chain, format_docs
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, Header, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from langchain_openai import ChatOpenAI
+from load_index import load_index
 from pgvector.psycopg import register_vector
 from psycopg_pool import ConnectionPool
 from pydantic import BaseModel, Field
+from retriever import PgVectorRetriever
 from sentence_transformers import SentenceTransformer
 
 BACKEND_ROOT = Path(__file__).resolve().parent.parent   # backend-rag-context-pipeline/
 UMBRELLA = BACKEND_ROOT.parent                           # rag-context-pipeline/
-
-# The query engine lives in the sibling engine repo (leaves flattened at its root).
-# Put it on sys.path so `chain`/`load_index`/`retriever` import directly. Replace
-# with a real package dependency once the engine is published.
-ENGINE_DIR = UMBRELLA / "engine-rag-context-pipeline"
-sys.path.insert(0, str(ENGINE_DIR))
-from chain import build_answer_chain, build_chain, format_docs  # noqa: E402
-from load_index import load_index        # noqa: E402
-from retriever import PgVectorRetriever  # noqa: E402
 
 DEFAULT_TOP_K = 6
 OPENAI_MODEL = "gpt-5.4-nano"

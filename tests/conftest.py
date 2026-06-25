@@ -23,7 +23,7 @@ from langchain_core.outputs import ChatResult
 # any cwd) — pytest only puts this tests/ dir on sys.path, not the repo root.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from api.main import app  # also puts the engine repo on sys.path
+from api.main import app  # imports the engine leaves from the installed rag-engine package
 
 # GenericFakeChatModel streams this back in word-sized chunks; concatenated
 # chunks reproduce it exactly, so tests can assert on the full text.

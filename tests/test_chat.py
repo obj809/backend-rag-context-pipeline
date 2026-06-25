@@ -3,7 +3,7 @@
 
 from conftest import FAKE_ANSWER
 
-from retriever import QUERY_PREFIX  # importable once api.main has run (sys.path bridge)
+from retriever import QUERY_PREFIX  # from the installed rag-engine package
 
 
 def _user(content):
