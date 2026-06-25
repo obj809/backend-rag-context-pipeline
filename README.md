@@ -11,20 +11,20 @@ This is one of the per-concern repos the pipeline is split into
 (`backend-`, `engine-`, `indexing-`, `vector-db-rag-context-pipeline`). This repo
 owns the **HTTP layer only**.
 
-## Dependencies (sibling repos)
+## Dependencies
 
-This service is **not yet standalone** — it composes its retriever + chain from
-the engine repo, and needs the database and a built index:
+This service composes its retriever + chain from the **engine** package, and
+needs the database and a built index:
 
 | Needs | Provided by |
 |---|---|
-| Query engine (`chain`, `load_index`, `retriever`) | `engine-rag-context-pipeline` (its root on `sys.path` via `ENGINE_DIR`) |
+| Query engine (`chain`, `load_index`, `retriever`) | the `rag-engine` package, pinned in `requirements.txt` (`git+https://…/engine-rag-context-pipeline@<tag>`) |
 | Postgres + pgvector | `vector-db-rag-context-pipeline` (`docker compose up -d`) |
 | The built `chunks` index | `indexing-rag-context-pipeline` (`python build_index.py`) |
 
-The engine is reached by a `sys.path` bridge (`ENGINE_DIR` in `api/main.py`)
-rather than a package import — replace that with a real package dependency once
-the engine is published.
+The engine is an ordinary installed dependency — no `sys.path` bridge and no
+side-by-side checkout. For active engine development, swap the pinned line in
+`requirements.txt` for an editable local install (`-e ../engine-rag-context-pipeline`).
 
 ## Run
 
@@ -57,10 +57,9 @@ docker compose up --build
 
 Notes on how the image works:
 
-- The build context is the **umbrella root** (`context: ..`) because the engine's
-  leaf modules (`retriever.py`, `chain.py`, `load_index.py`) are copied into the
-  image at `/app/engine-rag-context-pipeline/`, mirroring the umbrella layout so
-  the `ENGINE_DIR` `sys.path` bridge works unchanged.
+- The build context is **this repo's own root** (`context: .`). The engine is
+  installed from its Git repo as the `rag-engine` package (the image adds `git`
+  for the `git+https` install), so no sibling source is copied in.
 - The container joins the vector-db repo's Compose network
   (`vector-db-rag-context-pipeline_default`, declared `external`) and reaches
   Postgres as `db:5432` — `DATABASE_URL` is set in `docker-compose.yml`;
@@ -69,8 +68,9 @@ Notes on how the image works:
   time, so startup needs no HuggingFace download. If you change `EMBEDDING_MODEL`
   in the indexer, rebuild with `--build-arg EMBEDDING_MODEL=...`.
 - `.env` files are deliberately excluded from the image
-  (`Dockerfile.dockerignore`): a baked-in `.env` would override the injected
-  `DATABASE_URL` and embed the API key.
+  (`Dockerfile.dockerignore`): a baked-in `.env` would embed the OpenAI key. (It
+  can't override the injected `DATABASE_URL` — `api/main.py` loads `.env` without
+  `override=True`, so the container's env wins.)
 
 ## Endpoints
 
@@ -100,9 +100,10 @@ pip install -r requirements-dev.txt   # pytest + httpx, on top of requirements.t
 python -m pytest
 ```
 
-The engine repo must still be checked out as a sibling (the tests import
-`api.main`, which bridges to it over `sys.path`) — but only its source modules
-are used; the two repos' test suites are otherwise independent.
+The tests import `api.main`, which imports the engine as the installed
+`rag-engine` package — so the engine just needs to be installed (it is, via
+`requirements.txt`); no sibling checkout is required. The two repos' test suites
+are otherwise independent.
 
 ## Required environment variables
 

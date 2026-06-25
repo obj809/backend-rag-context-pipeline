@@ -9,30 +9,20 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      # Sibling layout mirrors the umbrella: api/main.py resolves the engine
-      # repo as ../engine-rag-context-pipeline (the sys.path bridge).
+      # The query engine is the pinned `rag-engine` package, installed from its
+      # public Git repo via requirements.txt — no sibling checkout, no bridge.
       - uses: actions/checkout@v4
-        with:
-          path: backend-rag-context-pipeline
-
-      # Engine at its current main — so engine changes that break the bridge
-      # contract surface here, not in production.
-      - uses: actions/checkout@v4
-        with:
-          repository: obj809/engine-rag-context-pipeline
-          path: engine-rag-context-pipeline
 
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
           cache: pip
-          cache-dependency-path: backend-rag-context-pipeline/requirements*.txt
+          cache-dependency-path: requirements*.txt
 
       # CPU-only torch — the PyPI default on Linux drags in multi-GB CUDA libs
       # the tests (and CI runners) can't use.
       - run: pip install torch --index-url https://download.pytorch.org/whl/cpu
+      # Pulls rag-engine from GitHub (the runner has git; public repo, no token).
       - run: pip install -r requirements.txt -r requirements-dev.txt
-        working-directory: backend-rag-context-pipeline
 
       - run: python -m pytest
-        working-directory: backend-rag-context-pipeline

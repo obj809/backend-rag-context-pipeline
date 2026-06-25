@@ -4,8 +4,7 @@
 services:
   api:
     build:
-      context: ..                                    # umbrella root, so the engine repo is in scope
-      dockerfile: backend-rag-context-pipeline/Dockerfile
+      context: .                                     # this backend repo; the engine is pip-installed
     ports:
       - "8000:8000"
     environment:

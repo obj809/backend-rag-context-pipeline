@@ -9,9 +9,9 @@ psycopg[binary]
 psycopg-pool
 pgvector
 
-# Query engine, installed as a package (no more sys.path bridge). Editable-local
-# for dev — both repos must still be checked out side by side; Phase 2 swaps this
-# for a pinned `rag-engine @ git+https://…@<tag>` (see umbrella TODO.md item 1).
-# Pulls langchain-core/-openai, sentence-transformers, numpy, psycopg, pgvector
+# Query engine, installed as a versioned package (no sys.path bridge, no
+# side-by-side checkout). Bump this tag to adopt engine changes. Pulls
+# langchain-core/-openai, sentence-transformers, numpy, psycopg, pgvector
 # transitively; they stay listed above as the backend's own direct imports.
--e ../engine-rag-context-pipeline
+# For active engine dev, swap locally for: -e ../engine-rag-context-pipeline
+rag-engine @ git+https://github.com/obj809/engine-rag-context-pipeline.git@v0.1.0

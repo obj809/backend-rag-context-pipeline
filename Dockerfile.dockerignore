@@ -1,13 +1,11 @@
-# BuildKit per-Dockerfile ignore (applies because the build context is the
-# umbrella root, which holds multi-GB venvs and the source PDF).
+# BuildKit per-Dockerfile ignore. The build context is now this backend repo's
+# root (not the umbrella), so the paths below are repo-relative.
 #
-# **/.env is load-bearing, not hygiene: api/main.py calls
-# load_dotenv(BACKEND_ROOT/.env, override=True), so a baked-in .env would
-# override the container's injected DATABASE_URL with localhost — and bake the
-# OpenAI key into the image.
-**/.venv
-**/.git
-**/__pycache__
-**/.env
-indexing-rag-context-pipeline/data
-**/*.md
+# Keeping .env out of the image is load-bearing: it would otherwise bake the
+# OpenAI key into the layer. (It can no longer clobber the container's injected
+# DATABASE_URL — api/main.py loads .env without override=True, so real env wins.)
+.venv
+.git
+__pycache__
+.env
+*.md

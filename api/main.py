@@ -12,8 +12,8 @@ Env:  OPENAI_API_KEY, DATABASE_URL    (see .env.example)
 
 Layout (multi-repo split):
   - The query engine (chain/load_index/retriever) is the installed `rag-engine`
-    package (built from the sibling `engine-rag-context-pipeline` repo); its leaf
-    modules import as ordinary top-level modules. See the backend requirements.txt.
+    package (from the `engine-rag-context-pipeline` repo, pinned in
+    requirements.txt); its leaf modules import as ordinary top-level modules.
   - The vector store + index are owned by `vector-db-rag-context-pipeline`
     (docker compose) and `indexing-rag-context-pipeline` (`python build_index.py`).
 """
