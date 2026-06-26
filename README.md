@@ -60,12 +60,21 @@ Notes on how the image works:
 - The build context is **this repo's own root** (`context: .`). The engine is
   installed from its Git repo as the `rag-engine` package (the image adds `git`
   for the `git+https` install), so no sibling source is copied in.
-- The container joins two **external** Compose networks: the vector-db repo's
+- The container joins two **external** networks: the vector-db repo's
   (`vector-db-rag-context-pipeline_default`) to reach Postgres as `db:5432`, and
-  the LiteLLM proxy's (`litellm-docker-container_default`) to reach the LLM
-  gateway as `litellm:4000`. Both projects must be up first. `DATABASE_URL` and
-  `OPENAI_BASE_URL` (`http://litellm:4000/v1`) are set in `docker-compose.yml`;
-  `OPENAI_API_KEY` (the LiteLLM virtual key) is interpolated from this repo's `.env`.
+  the shared `webnet` bridge, over which it reaches the LiteLLM gateway as
+  `litellm:4000` **and** shares a host-wide network with the project's other
+  services (e.g. the LLM frontend). Both must already exist — the vector-db
+  Compose project up, and `webnet` created (`docker network create webnet`) —
+  before `docker compose up`. `DATABASE_URL` and `OPENAI_BASE_URL`
+  (`http://litellm:4000/v1`) are set in `docker-compose.yml`; `OPENAI_API_KEY`
+  (the LiteLLM virtual key) is interpolated from this repo's `.env`.
+- **Why not the LiteLLM project's own network** (`litellm-docker-container_default`)?
+  Because the LiteLLM stack runs its own internal Postgres also aliased `db` —
+  attaching to that network makes the hostname `db` ambiguous, and `DATABASE_URL`
+  can silently resolve to the wrong database (auth failures, or worse, the wrong
+  data). The gateway is reachable over `webnet` instead, so the backend never
+  shares a network with that second `db`.
 - The embedding model (`BAAI/bge-small-en-v1.5`) is baked into the image at build
   time, so startup needs no HuggingFace download. If you change `EMBEDDING_MODEL`
   in the indexer, rebuild with `--build-arg EMBEDDING_MODEL=...`.
