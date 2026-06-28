@@ -5,12 +5,14 @@ services:
   api:
     build:
       context: .                                     # this backend repo; the engine is pip-installed
+    restart: unless-stopped                          # survive VPS reboots / Docker daemon restarts
     ports:
       - "8000:8000"
     environment:
       DATABASE_URL: postgresql://rag:rag@db:5432/rag # `db` = service name on the shared network
       OPENAI_API_KEY: ${OPENAI_API_KEY}              # LiteLLM virtual key, interpolated from this repo's .env
       OPENAI_BASE_URL: http://litellm:4000/v1        # `litellm` gateway, reached over the shared webnet
+      RAG_API_KEY: ${RAG_API_KEY}                    # shared-secret gate for /ask + /chat (401 if header missing); also hides /docs
     networks:
       - vector-db
       - webnet

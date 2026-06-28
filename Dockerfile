@@ -13,8 +13,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends git \
 
 # Install torch from the CPU-only index first; PyPI's default wheels (amd64 AND
 # aarch64) bundle the multi-GB CUDA/nvidia libraries, which this API never uses.
-# Keep this line identical to the engine Dockerfile's so the layer is shared.
-RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
+# Pinned for a reproducible build. Keep this line byte-identical to the
+# engine/indexer Dockerfiles (same pin). Note: the git layer above means this
+# torch layer can't actually share with engine/indexer (different parent layer),
+# but the matching pin keeps the three images on the same torch version.
+RUN pip install --no-cache-dir torch==2.12.0 --index-url https://download.pytorch.org/whl/cpu
 COPY requirements.txt /tmp/requirements.txt
 RUN pip install --no-cache-dir -r /tmp/requirements.txt
 
