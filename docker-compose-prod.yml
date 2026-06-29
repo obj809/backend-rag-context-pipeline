@@ -1,0 +1,42 @@
+# Production compose for the VPS (behind Cloudflare + Nginx Proxy Manager).
+# Standalone — run this INSTEAD of docker-compose.yml (not layered with -f):
+#   docker compose -f docker-compose-prod.yml up -d --build
+#
+# Differences from dev (docker-compose.yml):
+#   - NO host port publish — NPM reaches the container over webnet by name
+#     (backend-rag-context-pipeline-api-1:8000); nothing is exposed on the host.
+#   - a /health healthcheck so Docker/NPM see real liveness (and restarts trigger).
+#   - resource limits sized for the 2 vCPU / 7.9 GB VPS.
+# Prereqs: the vector-db prod stack up; docker network create webnet; and a .env
+# with OPENAI_API_KEY (LiteLLM virtual key), DATABASE_URL, RAG_API_KEY.
+services:
+  api:
+    build:
+      context: .                                     # this backend repo; the engine is pip-installed
+    restart: unless-stopped                          # survive VPS reboots / daemon restarts
+    environment:
+      DATABASE_URL: postgresql://rag:rag@db:5432/rag # `db` on the vector-db network
+      OPENAI_API_KEY: ${OPENAI_API_KEY}              # LiteLLM virtual key, from this repo's .env
+      OPENAI_BASE_URL: http://litellm:4000/v1        # LiteLLM gateway, reached over webnet
+      RAG_API_KEY: ${RAG_API_KEY}                    # shared-secret gate for /ask + /chat; also hides /docs
+    healthcheck:
+      # python is already in the image; urlopen raises (non-zero exit) on a non-200.
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s                              # lifespan loads the BGE model + opens the pool
+    cpus: 1.5
+    mem_limit: 2g
+    mem_reservation: 512m
+    networks:
+      - vector-db
+      - webnet
+
+networks:
+  vector-db:
+    external: true
+    name: vector-db-rag-context-pipeline_default
+  webnet:
+    external: true
+    name: webnet
