@@ -1,7 +1,7 @@
 """Contract tests for POST /chat — the behaviors the frontend's proxy relies on
 (see the umbrella's integration-plan.md §3)."""
 
-from conftest import FAKE_ANSWER
+from conftest import CONDENSED_QUESTION, FAKE_ANSWER
 
 from retriever import QUERY_PREFIX  # from the installed rag-engine package
 
@@ -21,20 +21,28 @@ def test_streams_plain_text_answer(client):
     assert resp.text == FAKE_ANSWER
 
 
-def test_answers_the_last_user_message(client, embedder):
-    resp = client.post(
+def test_first_turn_retrieves_on_the_raw_question(client, embedder):
+    # No prior turns → no condensation pass; the raw question is embedded.
+    resp = client.post("/chat", json={"messages": [_user("What are the penalties?")]})
+    assert resp.status_code == 200
+    assert embedder.encoded == [QUERY_PREFIX + "What are the penalties?"]
+
+
+def test_followup_is_condensed_before_retrieval(client_condensing, embedder):
+    resp = client_condensing.post(
         "/chat",
         json={
             "messages": [
-                _user("What is RAG?"),
-                _assistant("Retrieval-augmented generation."),
-                _user("What about scope 3?"),
+                _user("What is a controlled action?"),
+                _assistant("An action likely to have a significant impact needing approval."),
+                _user("What are the penalties for it?"),
             ]
         },
     )
     assert resp.status_code == 200
-    # The retriever embeds QUERY_PREFIX + query; prior turns must be ignored.
-    assert embedder.encoded == [QUERY_PREFIX + "What about scope 3?"]
+    assert resp.text == FAKE_ANSWER
+    # Retrieval embeds the CONDENSED standalone question, not the raw pronoun follow-up.
+    assert embedder.encoded == [QUERY_PREFIX + CONDENSED_QUESTION]
 
 
 def test_empty_messages_is_400(client):

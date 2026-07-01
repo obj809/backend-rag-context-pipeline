@@ -26,7 +26,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Literal
 
-from chain import build_answer_chain, build_chain, format_docs
+from chain import build_answer_chain, build_chain, build_condense_chain, format_docs, format_history
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, Header, HTTPException, Request
 from fastapi.responses import StreamingResponse
@@ -145,20 +145,34 @@ def chat(req: ChatRequest) -> StreamingResponse:
 
     Contract (see the umbrella's integration-plan.md): full conversation
     in, plain UTF-8 token stream out (no SSE/JSON framing), non-200 for any failure
-    before the first token. v1 ignores prior turns — the chain is single-question.
+    before the first token. Multi-turn: when prior turns exist, a cheap LLM pass
+    condenses the recent history + latest message into a self-contained question
+    before retrieval, so follow-ups with pronouns/ellipsis resolve their referent.
     """
     if not req.messages or req.messages[-1].role != "user":
         raise HTTPException(status_code=400, detail="messages must be non-empty and end with a user message")
-    query = req.messages[-1].content
+    question = req.messages[-1].content
+    history = [(m.role, m.content) for m in req.messages[:-1]]
 
     try:
+        # With prior turns, fold history + the latest message into a standalone
+        # question so retrieval isn't embedding an under-specified follow-up. The
+        # first turn (no history) skips the extra LLM call and retrieves on the raw
+        # question — unchanged single-turn cost and latency.
+        search_query = (
+            build_condense_chain(app.state.llm).invoke(
+                {"chat_history": format_history(history), "question": question}
+            )
+            if history
+            else question
+        )
         # Retrieve eagerly so the pooled connection is held only for the SQL
         # lookup, not for the multi-second LLM stream.
         with app.state.pool.connection() as conn:
             retriever = PgVectorRetriever(conn=conn, embedder=app.state.model, k=DEFAULT_TOP_K)
-            docs = retriever.invoke(query)
+            docs = retriever.invoke(search_query)
         stream = build_answer_chain(app.state.llm).stream(
-            {"context": format_docs(docs), "question": query}
+            {"context": format_docs(docs), "question": search_query}
         )
         # Pull the first token before returning: once StreamingResponse starts,
         # the 200 status is already sent, so OpenAI failures must surface here.

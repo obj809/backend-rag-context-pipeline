@@ -89,6 +89,11 @@ class FailingChatModel(BaseChatModel):
         raise RuntimeError("llm down")
 
 
+# The standalone question the condensing fake rewrites a follow-up into. Distinct
+# from FAKE_ANSWER so a multi-turn test can tell the condense call from the answer
+# call by which string reaches the retriever.
+CONDENSED_QUESTION = "What are the penalties under the EPBC Act?"
+
 # What the keyed client's gate expects; tests send (or omit) this value.
 SHARED_KEY = "test-shared-secret"
 
@@ -122,6 +127,17 @@ def client_db_down(embedder):
 @pytest.fixture
 def client_llm_down(embedder):
     return _wire(FakeConn(FAKE_ROWS), FailingChatModel(), embedder)
+
+
+@pytest.fixture
+def client_condensing(embedder):
+    """Multi-turn app: the fake LLM returns CONDENSED_QUESTION for the first
+    (condense) call, then streams FAKE_ANSWER for the answer call — a plain
+    iterator (not cycle) so the two calls consume distinct messages in order."""
+    llm = GenericFakeChatModel(
+        messages=iter([AIMessage(content=CONDENSED_QUESTION), AIMessage(content=FAKE_ANSWER)])
+    )
+    return _wire(FakeConn(FAKE_ROWS), llm, embedder)
 
 
 @pytest.fixture
