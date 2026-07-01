@@ -12,9 +12,8 @@ psycopg[binary]==3.3.4
 psycopg-pool==3.3.1
 pgvector==0.4.2
 
-# Query engine, installed as a versioned package (no sys.path bridge, no
-# side-by-side checkout). Bump this tag to adopt engine changes. Pulls
-# langchain-core/-openai, sentence-transformers, numpy, psycopg, pgvector
+# Query engine, installed as a versioned package. Bump this tag to adopt engine changes. 
+# Pulls langchain-core/-openai, sentence-transformers, numpy, psycopg, pgvector
 # transitively; they stay listed above as the backend's own direct imports.
 # For active engine dev, swap locally for: -e ../engine-rag-context-pipeline
 rag-engine @ git+https://github.com/obj809/engine-rag-context-pipeline.git@v0.1.0

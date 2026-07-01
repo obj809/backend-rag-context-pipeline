@@ -38,8 +38,8 @@ from pydantic import BaseModel, Field
 from retriever import PgVectorRetriever
 from sentence_transformers import SentenceTransformer
 
-BACKEND_ROOT = Path(__file__).resolve().parent.parent   # backend-rag-context-pipeline/
-UMBRELLA = BACKEND_ROOT.parent                           # rag-context-pipeline/
+BACKEND_ROOT = Path(__file__).resolve().parent.parent
+UMBRELLA = BACKEND_ROOT.parent
 
 DEFAULT_TOP_K = 6
 OPENAI_MODEL = "gpt-5.4-mini"
@@ -77,7 +77,7 @@ async def lifespan(app: FastAPI):
     pool = ConnectionPool(os.environ["DATABASE_URL"], configure=register_vector, open=False)
     pool.open()
     with pool.connection() as conn:
-        embedding_model = load_index(conn)   # the model name recorded at index time
+        embedding_model = load_index(conn)
 
     app.state.pool = pool
     app.state.model = SentenceTransformer(embedding_model)
@@ -134,7 +134,7 @@ def ask(req: AskRequest) -> AskResponse:
             retriever = PgVectorRetriever(conn=conn, embedder=app.state.model, k=req.k)
             chain = build_chain(retriever, app.state.llm)
             answer = chain.invoke(req.question)
-    except Exception as exc:  # surface DB / LLM / upstream failures as 502
+    except Exception as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
     return AskResponse(question=req.question, answer=answer)
 
