@@ -20,7 +20,6 @@ services:
       OPENAI_BASE_URL: http://litellm:4000/v1        # LiteLLM gateway, reached over webnet
       RAG_API_KEY: ${RAG_API_KEY}                    # shared-secret gate for /ask + /chat; also hides /docs
     healthcheck:
-      # python is already in the image; urlopen raises (non-zero exit) on a non-200.
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 30s
       timeout: 5s

@@ -16,4 +16,4 @@ pgvector==0.4.2
 # Pulls langchain-core/-openai, sentence-transformers, numpy, psycopg, pgvector
 # transitively; they stay listed above as the backend's own direct imports.
 # For active engine dev, swap locally for: -e ../engine-rag-context-pipeline
-rag-engine @ git+https://github.com/obj809/engine-rag-context-pipeline.git@v0.1.0
+rag-engine @ git+https://github.com/obj809/engine-rag-context-pipeline.git@v0.2.0
